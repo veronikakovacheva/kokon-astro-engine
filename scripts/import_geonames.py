@@ -11,12 +11,19 @@ CC BY 4.0, см. README.md). Ожидаются два файла в катал�
                           заголовка): названия на разных языках, в т.ч.
                           исторические.
 
+Из cities500.txt берутся только строки с feature_code населённого пункта
+(начинается с "PPL"), за вычетом PPLQ/PPLW/PPLH — мест, которых больше не
+существует (заброшены/уничтожены/исторические). По размеру НЕ фильтруем —
+маленькие посёлки остаются наравне с миллионниками, см.
+docs/adr/0002-import-filters-by-place-type-not-size.md.
+
 Из alternateNamesV2.txt (обычно несколько сотен МБ и десятки миллионов
 строк по ВСЕЙ базе GeoNames, не только по городам) берутся только записи,
-относящиеся к geonameid из cities500.txt, и только языки ru/en, плюс
-записи с непустым признаком исторического названия — независимо от языка
-(чтобы находить города по старым именам, например "Ленинград"). Файл
-читается потоково, построчно — целиком в память не загружается.
+относящиеся к geonameid из уже отфильтрованного cities500.txt, и только
+языки ru/en, плюс записи с непустым признаком исторического названия —
+независимо от языка (чтобы находить города по старым именам, например
+"Ленинград"). Файл читается потоково, построчно — целиком в память не
+загружается.
 
 Схема — см. migrations/001_cities.sql, применить нужно заранее.
 Подключение к БД — через переменную окружения CITY_REPOSITORY_DSN (.env).
@@ -61,6 +68,20 @@ ALTERNATE_NAMES_FILENAME = "alternateNamesV2.txt"
 # исторические они или нет.
 KEEP_LANGUAGES = {"ru", "en"}
 
+# Из cities500.txt берутся только населённые пункты: feature_code,
+# начинающийся с "PPL" (populated place — см. http://www.geonames.org/export/codes.html),
+# за вычетом кодов, обозначающих место, которого больше нет:
+#   PPLQ — заброшенный населённый пункт (abandoned populated place)
+#   PPLW — уничтоженный населённый пункт (destroyed populated place)
+#   PPLH — населённый пункт, переставший существовать (historical populated place)
+# По размеру НЕ фильтруем — маленький посёлок остаётся в справочнике наравне
+# с мегаполисом (см. docs/adr/0002-import-filters-by-place-type-not-size.md).
+EXCLUDED_FEATURE_CODES = {"PPLQ", "PPLW", "PPLH"}
+
+
+def _is_populated_place(feature_code: str) -> bool:
+    return feature_code.startswith("PPL") and feature_code not in EXCLUDED_FEATURE_CODES
+
 CITIES_COLUMNS = (
     "geonameid", "name", "ascii_name", "latitude", "longitude",
     "country_code", "admin1_code", "population", "timezone", "feature_code",
@@ -75,7 +96,14 @@ ALT_NAMES_MATCH_PROGRESS_EVERY = 20_000
 
 
 def iter_cities(path: Path):
-    """Стримит cities500.txt и отдаёт словари в порядке CITIES_COLUMNS."""
+    """Стримит cities500.txt и отдаёт словари в порядке CITIES_COLUMNS.
+
+    Пропускает строки, чей feature_code — не населённый пункт или
+    обозначает место, которого больше не существует (см.
+    EXCLUDED_FEATURE_CODES). Печатает итоговое число отфильтрованных по
+    типу строк по завершении чтения файла.
+    """
+    excluded_by_type = 0
     with path.open("r", encoding="utf-8") as f:
         for lineno, line in enumerate(f, start=1):
             fields = line.rstrip("\n").split("\t")
@@ -94,6 +122,10 @@ def iter_cities(path: Path):
                 population, _elevation, _dem, timezone, _mod_date,
             ) = fields[:19]
 
+            if not _is_populated_place(feature_code):
+                excluded_by_type += 1
+                continue
+
             try:
                 yield {
                     "geonameid": int(geonameid),
@@ -110,6 +142,8 @@ def iter_cities(path: Path):
             except ValueError as e:
                 print(f"  [WARN] {path.name}:{lineno}: {e} — строка пропущена", file=sys.stderr)
                 continue
+
+    print(f"  отфильтровано по типу (не населённый пункт / заброшено-уничтожено): {excluded_by_type:,}")
 
 
 def iter_alternate_names(path: Path, keep_geonameids: set):

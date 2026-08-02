@@ -36,26 +36,62 @@ class NullCityRepository(CityRepository):
 
 class PostgresCityRepository(CityRepository):
     """City directory backed by the `cities` / `city_alternate_names` tables
-    populated from GeoNames — see migrations/001_cities.sql and
-    scripts/import_geonames.py.
+    populated from GeoNames — see migrations/001_cities.sql,
+    migrations/002_trigram_search.sql and scripts/import_geonames.py.
 
-    Matching is a case-insensitive PREFIX search (not substring) against the
-    city's primary name, its ascii name, and any of its alternate names
-    (which include historic names such as "Ленинград" for Saint Petersburg).
-    A city can match via several alternate names at once; results are
-    de-duplicated by geonameid before ranking. The displayed name always
-    comes from `cities` (the current/modern name) — never from the
-    alternate-name row that produced the match — so a historic-name query
-    still returns the modern name.
+    Matching happens in two tiers against the city's primary name, its ascii
+    name, and any of its alternate names (which include historic names such
+    as "Ленинград" for Saint Petersburg):
+      1. PREFIX matches ("starts with") — always ranked above tier 2.
+      2. SUBSTRING matches ("contains") — needed for Russian compound place
+         names, where users commonly search by the meaningful part rather
+         than from the start (e.g. "Петербург" -> "Санкт-Петербург",
+         "Новгород" -> "Нижний Новгород"). See
+         docs/adr/0003-trigram-search-for-substring-matching.md.
+
+    Within each tier, a city that matched via its primary name or a
+    *preferred* alternate name (city_alternate_names.is_preferred) ranks
+    above a city that only matched via a non-preferred alternate name, and
+    finally results are sorted by population descending. A city can match
+    via several rows at once (e.g. both a preferred and a non-preferred
+    alternate name); results are de-duplicated by geonameid, taking its best
+    tier/preference. The displayed name always comes from `cities` (the
+    current/modern name) plus, for the Russian display name, the preferred
+    non-historic `ru` alternate name — never from whichever alternate-name
+    row actually produced the match — so a historic-name query still returns
+    the modern name.
     """
 
     _SEARCH_SQL = """
-        WITH matches AS (
-            SELECT geonameid FROM cities
+        WITH prefix_hits AS (
+            SELECT geonameid, TRUE AS is_preferred_hit FROM cities
             WHERE lower(name) LIKE %(prefix)s OR lower(ascii_name) LIKE %(prefix)s
-            UNION
-            SELECT geonameid FROM city_alternate_names
+            UNION ALL
+            SELECT geonameid, is_preferred FROM city_alternate_names
             WHERE lower(alternate_name) LIKE %(prefix)s
+        ),
+        prefix_matches AS (
+            SELECT geonameid, bool_or(is_preferred_hit) AS preferred_match
+            FROM prefix_hits
+            GROUP BY geonameid
+        ),
+        substring_hits AS (
+            SELECT geonameid, TRUE AS is_preferred_hit FROM cities
+            WHERE lower(name) LIKE %(substring)s OR lower(ascii_name) LIKE %(substring)s
+            UNION ALL
+            SELECT geonameid, is_preferred FROM city_alternate_names
+            WHERE lower(alternate_name) LIKE %(substring)s
+        ),
+        substring_matches AS (
+            SELECT geonameid, bool_or(is_preferred_hit) AS preferred_match
+            FROM substring_hits
+            WHERE geonameid NOT IN (SELECT geonameid FROM prefix_matches)
+            GROUP BY geonameid
+        ),
+        matches AS (
+            SELECT geonameid, 0 AS tier, preferred_match FROM prefix_matches
+            UNION ALL
+            SELECT geonameid, 1 AS tier, preferred_match FROM substring_matches
         )
         SELECT
             c.name,
@@ -74,12 +110,19 @@ class PostgresCityRepository(CityRepository):
             ) AS name_ru
         FROM cities c
         JOIN matches m ON m.geonameid = c.geonameid
-        ORDER BY c.population DESC NULLS LAST, c.name
+        ORDER BY m.tier ASC, m.preferred_match DESC, c.population DESC NULLS LAST, c.name
         LIMIT %(limit)s
     """
 
     def __init__(self, dsn: str):
         self._dsn = dsn
+
+    @staticmethod
+    def _escape_like(value: str) -> str:
+        """Escapes LIKE metacharacters in user input (\\, %, _) so a query
+        like "50%" or "a_b" is matched literally, not as a wildcard pattern.
+        """
+        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
     def search_cities(self, query: str, limit: int = 6) -> list[dict]:
         import psycopg
@@ -88,11 +131,16 @@ class PostgresCityRepository(CityRepository):
         q = query.strip()
         if not q:
             return []
-        prefix = q.lower() + "%"
+        escaped = self._escape_like(q.lower())
+        prefix = escaped + "%"
+        substring = "%" + escaped + "%"
 
         with psycopg.connect(self._dsn, row_factory=dict_row) as conn:
             with conn.cursor() as cur:
-                cur.execute(self._SEARCH_SQL, {"prefix": prefix, "limit": limit})
+                cur.execute(
+                    self._SEARCH_SQL,
+                    {"prefix": prefix, "substring": substring, "limit": limit},
+                )
                 rows = cur.fetchall()
 
         results = []

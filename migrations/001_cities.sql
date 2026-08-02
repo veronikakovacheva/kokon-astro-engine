@@ -1,7 +1,10 @@
 -- Миграция 001: справочник городов (GeoNames) и альтернативные названия.
 --
 -- Источник данных: https://download.geonames.org/export/dump/
---   cities500.txt        -> cities
+--   cities500.txt        -> cities (только населённые пункты — feature_code
+--                           начинается с "PPL", кроме заброшенных/уничтоженных
+--                           PPLQ/PPLW/PPLH; по размеру НЕ фильтруется, см.
+--                           docs/adr/0002-import-filters-by-place-type-not-size.md)
 --   alternateNamesV2.txt -> city_alternate_names (только geonameid из cities,
 --                           только языки ru/en, плюс исторические названия
 --                           любого языка — см. scripts/import_geonames.py)
@@ -35,10 +38,16 @@
 -- Выбор: btree + text_pattern_ops на lower(name)/lower(ascii_name) в
 -- cities и на lower(alternate_name) в city_alternate_names — это именно
 -- тот паттерн доступа, который нужен автодополнению (быстрый префиксный
--- поиск + ORDER BY population DESC). Если в будущем понадобится поиск с
--- опечатками или "содержит подстроку где угодно в названии" — тогда
--- стоит добавить pg_trgm (CREATE EXTENSION pg_trgm + GIN-индекс) отдельной
--- миграцией; сейчас это не требуется и не добавлено.
+-- поиск + ORDER BY population DESC).
+--
+-- ОБНОВЛЕНИЕ (миграция 002): выбор выше был верен для ЧИСТО префиксного
+-- поиска, но на практике для русских составных названий типа "Санкт-
+-- Петербург"/"Нижний Новгород" нужен ещё и поиск по подстроке ("Петербург"
+-- должен находить Санкт-Петербург) — а обычный btree, в т.ч. с
+-- text_pattern_ops, ускоряет только LEFT-anchored 'x%', но не '%x%'. Для
+-- этого миграция 002_trigram_search.sql добавляет pg_trgm-индексы поверх
+-- (не вместо) индексов ниже — см. её собственный комментарий и
+-- docs/adr/0003-trigram-search-for-substring-matching.md.
 
 CREATE TABLE IF NOT EXISTS cities (
     geonameid     BIGINT PRIMARY KEY,
@@ -75,6 +84,14 @@ COMMENT ON TABLE city_alternate_names IS
 -- Сортировка результатов автодополнения по населению (крупные города — выше).
 CREATE INDEX IF NOT EXISTS idx_cities_population
     ON cities (population DESC NULLS LAST);
+
+-- feature_code уже отфильтрован при импорте (только населённые пункты, см.
+-- выше), поэтому этот индекс не нужен для самого поиска в /geocode/search.
+-- Он — для операционных/аналитических запросов по типу населённого пункта
+-- (например, "сколько столиц/административных центров загружено", отладка
+-- полноты импорта) — см. docs/adr/0002-import-filters-by-place-type-not-size.md.
+CREATE INDEX IF NOT EXISTS idx_cities_feature_code
+    ON cities (feature_code);
 
 -- Префиксный поиск по основному и ascii-имени города.
 CREATE INDEX IF NOT EXISTS idx_cities_name_prefix

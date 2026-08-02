@@ -10,9 +10,15 @@
 -- Специально включает: Moscow, RU (столица, geonameid 524901) и четыре
 -- американских тёзки (TN/ME/PA/ID) — чтобы тест на поиск "Москва" мог
 -- проверить, что ранжирование по населению выбирает российскую столицу, а
--- не одноимённый город в США; и Saint Petersburg, RU (geonameid 498817) с
+-- не одноимённый город в США; Saint Petersburg, RU (geonameid 498817) с
 -- историческим альтернативным именем "Ленинград" (ru, isHistoric=1) — чтобы
--- проверить, что поиск по историческому названию возвращает современное имя.
+-- проверить, что поиск по историческому названию возвращает современное имя,
+-- и с ru-именем "Санкт-Петербург" не с начала строки — для поиска по
+-- подстроке ("Петербург"); и Vozhd' Proletariata, RU (geonameid 471247,
+-- население 594, feature_code PPL) — маленький посёлок, отобранный тем же
+-- фильтром по типу населённого пункта, что и в scripts/import_geonames.py
+-- (см. docs/adr/0002-import-filters-by-place-type-not-size.md), чтобы
+-- проверить, что точный поиск находит его наравне со столицами.
 
 TRUNCATE TABLE cities, city_alternate_names;
 
@@ -22,6 +28,7 @@ INSERT INTO public.cities VALUES (4642988, 'Moscow', 'Moscow', 35.06203, -89.403
 INSERT INTO public.cities VALUES (4972660, 'Moscow', 'Moscow', 45.07061, -69.89117, 'US', 'ME', 600, 'America/New_York', 'PPL');
 INSERT INTO public.cities VALUES (5202009, 'Moscow', 'Moscow', 41.33675, -75.51852, 'US', 'PA', 1960, 'America/New_York', 'PPL');
 INSERT INTO public.cities VALUES (5601538, 'Moscow', 'Moscow', 46.73239, -117.00017, 'US', 'ID', 25060, 'America/Los_Angeles', 'PPLA2');
+INSERT INTO public.cities VALUES (471247, 'Vozhd’ Proletariata', 'Vozhd'' Proletariata', 55.43797, 39.30419, 'RU', '47', 594, 'Europe/Moscow', 'PPL');
 
 INSERT INTO public.city_alternate_names VALUES (300633, 498817, 'Leningrad', 'en', true, false);
 INSERT INTO public.city_alternate_names VALUES (300635, 498817, 'Petrogrado', 'es', true, false);
@@ -61,3 +68,5 @@ INSERT INTO public.city_alternate_names VALUES (12992664, 5202009, 'Moscow', 'en
 INSERT INTO public.city_alternate_names VALUES (3046706, 5601538, 'Москва', 'ru', false, false);
 INSERT INTO public.city_alternate_names VALUES (8706818, 5601538, 'Москоу', 'ru', false, false);
 INSERT INTO public.city_alternate_names VALUES (13133715, 5601538, 'Moscow', 'en', false, true);
+INSERT INTO public.city_alternate_names VALUES (1747373, 471247, 'Vozhd'' Proletariata', 'en', false, false);
+INSERT INTO public.city_alternate_names VALUES (1747374, 471247, 'Вождь Пролетариата', 'ru', false, false);

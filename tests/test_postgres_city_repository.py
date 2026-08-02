@@ -9,11 +9,13 @@ TRUNCATE + INSERT по указанному DSN при каждом запуск
 Как запустить локально:
     createdb kokon_astro_test
     psql -d kokon_astro_test -f migrations/001_cities.sql
+    psql -d kokon_astro_test -f migrations/002_trigram_search.sql
     TEST_POSTGRES_DSN="dbname=kokon_astro_test" pytest tests/test_postgres_city_repository.py -v
 
 Тестовые данные — реальная (не синтетическая) выборка из GeoNames:
 tests/fixtures/geonames_sample.sql — все "Moscow"/"Saint Petersburg" из
-cities500.txt + их альтернативные имена (см. комментарий в файле).
+cities500.txt + их альтернативные имена, плюс один маленький посёлок
+(см. комментарий в файле).
 """
 import os
 from pathlib import Path
@@ -25,7 +27,10 @@ psycopg = pytest.importorskip("psycopg")
 from city_repository import PostgresCityRepository
 
 TEST_DSN = os.environ.get("TEST_POSTGRES_DSN", "")
-MIGRATION_PATH = Path(__file__).parent.parent / "migrations" / "001_cities.sql"
+MIGRATION_PATHS = [
+    Path(__file__).parent.parent / "migrations" / "001_cities.sql",
+    Path(__file__).parent.parent / "migrations" / "002_trigram_search.sql",
+]
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "geonames_sample.sql"
 
 pytestmark = pytest.mark.skipif(
@@ -41,7 +46,8 @@ pytestmark = pytest.mark.skipif(
 def repo():
     with psycopg.connect(TEST_DSN) as conn:
         with conn.cursor() as cur:
-            cur.execute(MIGRATION_PATH.read_text(encoding="utf-8"))
+            for migration_path in MIGRATION_PATHS:
+                cur.execute(migration_path.read_text(encoding="utf-8"))
             cur.execute(FIXTURE_PATH.read_text(encoding="utf-8"))
         conn.commit()
 
@@ -59,6 +65,19 @@ def test_moscow_cyrillic_first_result_is_russian_capital(repo):
     # (макс. 25к) за счёт сортировки по населению.
     assert first["lat"] == pytest.approx(55.75204, abs=1e-3)
     assert first["lng"] == pytest.approx(37.61781, abs=1e-3)
+
+
+def test_substring_search_finds_saint_petersburg_by_significant_part(repo):
+    # "Петербург" не является префиксом ни "Saint Petersburg", ни
+    # "Санкт-Петербург" — находится только через поиск по подстроке
+    # (миграция 002, pg_trgm). Частый сценарий для русских составных
+    # названий: "Новгород" -> "Нижний Новгород" и т.п.
+    results = repo.search_cities("Петербург")
+
+    assert results
+    first = results[0]
+    assert first["short_name"] == "Saint Petersburg, RU"
+    assert first["display_name"] == "Санкт-Петербург, RU"
 
 
 def test_leningrad_finds_saint_petersburg_with_modern_name(repo):
@@ -83,3 +102,17 @@ def test_search_works_with_latin_script(repo):
 
 def test_nonexistent_city_returns_empty_list(repo):
     assert repo.search_cities("Zzzzznonexistentcityxyz") == []
+
+
+def test_small_settlement_findable_by_exact_name(repo):
+    # По размеру справочник не фильтруется (см.
+    # docs/adr/0002-import-filters-by-place-type-not-size.md) — посёлок
+    # с населением 594 человека должен находиться так же надёжно, как
+    # столица, если название введено точно (и на кириллице, и на латинице).
+    ru_results = repo.search_cities("Вождь Пролетариата")
+    assert len(ru_results) == 1
+    assert ru_results[0]["display_name"] == "Вождь Пролетариата, RU"
+    assert ru_results[0]["lat"] == pytest.approx(55.43797, abs=1e-3)
+
+    en_results = repo.search_cities("Vozhd")
+    assert any(r["lat"] == pytest.approx(55.43797, abs=1e-3) for r in en_results)
