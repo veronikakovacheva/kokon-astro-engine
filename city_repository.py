@@ -35,12 +35,47 @@ class NullCityRepository(CityRepository):
 
 
 class PostgresCityRepository(CityRepository):
+    """City directory backed by the `cities` / `city_alternate_names` tables
+    populated from GeoNames — see migrations/001_cities.sql and
+    scripts/import_geonames.py.
+
+    Matching is a case-insensitive PREFIX search (not substring) against the
+    city's primary name, its ascii name, and any of its alternate names
+    (which include historic names such as "Ленинград" for Saint Petersburg).
+    A city can match via several alternate names at once; results are
+    de-duplicated by geonameid before ranking. The displayed name always
+    comes from `cities` (the current/modern name) — never from the
+    alternate-name row that produced the match — so a historic-name query
+    still returns the modern name.
     """
-    TODO(next stage): the `cities` table does not exist yet — it will be created
-    together with a migration and a data-loading script in a later stage. This
-    class mirrors the schema of the previous Supabase `cities` table
-    (name, name_ru, country, lat, lng, timezone, population) so that once the
-    table exists, this adapter should work without further changes.
+
+    _SEARCH_SQL = """
+        WITH matches AS (
+            SELECT geonameid FROM cities
+            WHERE lower(name) LIKE %(prefix)s OR lower(ascii_name) LIKE %(prefix)s
+            UNION
+            SELECT geonameid FROM city_alternate_names
+            WHERE lower(alternate_name) LIKE %(prefix)s
+        )
+        SELECT
+            c.name,
+            c.country_code,
+            c.latitude,
+            c.longitude,
+            c.timezone,
+            (
+                SELECT an.alternate_name
+                FROM city_alternate_names an
+                WHERE an.geonameid = c.geonameid
+                  AND an.iso_language = 'ru'
+                  AND an.is_historic = FALSE
+                ORDER BY an.is_preferred DESC, an.alternate_name
+                LIMIT 1
+            ) AS name_ru
+        FROM cities c
+        JOIN matches m ON m.geonameid = c.geonameid
+        ORDER BY c.population DESC NULLS LAST, c.name
+        LIMIT %(limit)s
     """
 
     def __init__(self, dsn: str):
@@ -48,26 +83,23 @@ class PostgresCityRepository(CityRepository):
 
     def search_cities(self, query: str, limit: int = 6) -> list[dict]:
         import psycopg
+        from psycopg.rows import dict_row
 
-        pattern = f"%{query.strip()}%"
-        sql = """
-            SELECT name, name_ru, country, lat, lng, timezone
-            FROM cities
-            WHERE name ILIKE %(pattern)s OR name_ru ILIKE %(pattern)s
-            ORDER BY population DESC NULLS LAST
-            LIMIT %(limit)s
-        """
-        with psycopg.connect(self._dsn) as conn:
+        q = query.strip()
+        if not q:
+            return []
+        prefix = q.lower() + "%"
+
+        with psycopg.connect(self._dsn, row_factory=dict_row) as conn:
             with conn.cursor() as cur:
-                cur.execute(sql, {"pattern": pattern, "limit": limit})
-                columns = [desc[0] for desc in cur.description]
-                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+                cur.execute(self._SEARCH_SQL, {"prefix": prefix, "limit": limit})
+                rows = cur.fetchall()
 
         results = []
         for row in rows:
             name = row["name"]
-            country = row.get("country") or ""
             name_ru = row.get("name_ru")
+            country = row.get("country_code") or ""
 
             short_name = f"{name}, {country}" if country else name
             display_name = f"{name_ru}, {country}" if name_ru and country else short_name
@@ -75,8 +107,8 @@ class PostgresCityRepository(CityRepository):
             results.append({
                 "short_name": short_name,
                 "display_name": display_name,
-                "lat": row["lat"],
-                "lng": row["lng"],
+                "lat": row["latitude"],
+                "lng": row["longitude"],
                 "timezone": row.get("timezone") or "UTC",
             })
 

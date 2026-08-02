@@ -93,6 +93,58 @@ pytest tests/ -v
 - `test_city_repository_unconfigured.py` — расчёт с явно переданными
   координатами и таймзоной работает без настроенного справочника городов;
   `/geocode/search` в этом случае отдаёт `503`.
+- `test_postgres_city_repository.py` — интеграционные тесты
+  `PostgresCityRepository` (поиск «Москва», «Ленинград» и т.д. — см.
+  раздел [«Справочник городов (GeoNames)»](#справочник-городов-geonames)).
+  Требуют настоящий PostgreSQL и **пропускаются**, если не задана
+  переменная `TEST_POSTGRES_DSN` — обычные `pytest tests/ -v` их не
+  затронут.
+
+## Справочник городов (GeoNames)
+
+Данные для автодополнения (`GET /geocode/search`) — из
+[GeoNames](https://www.geonames.org/): файлы `cities500.txt` (города) и
+`alternateNamesV2.txt` (названия на разных языках, включая исторические)
+из [дампов GeoNames](https://download.geonames.org/export/dump/).
+
+**Лицензия данных: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+Атрибуция обязательна** — она приведена в разделе [«Лицензия»](#лицензия)
+ниже; сами дампы в репозиторий не входят (см. `.gitignore`) и скачиваются
+отдельно.
+
+### Как запустить импорт
+
+1. Скачайте и распакуйте `cities500.zip` и `alternateNamesV2.zip` с
+   https://download.geonames.org/export/dump/ в какой-нибудь каталог
+   (по умолчанию скрипт ищет `~/Desktop/Кокон Claude/geonames-data/`).
+2. Примените миграцию схемы к базе, на которую указывает
+   `CITY_REPOSITORY_DSN`:
+   ```bash
+   psql "$CITY_REPOSITORY_DSN" -f migrations/001_cities.sql
+   ```
+3. Убедитесь, что `CITY_REPOSITORY_DSN` задан в `.env` (зависимости для
+   импорта — `psycopg`, `python-dotenv` — уже в `requirements.txt`).
+4. Запустите импорт:
+   ```bash
+   python scripts/import_geonames.py [путь_к_каталогу_с_дампами]
+   ```
+   Скрипт грузит все города из `cities500.txt`; из `alternateNamesV2.txt`
+   берёт только записи для загруженных городов на языках `ru`/`en`, плюс
+   записи с признаком исторического названия на любом языке (например,
+   «Ленинград» для Санкт-Петербурга). Файл читается потоково (без загрузки
+   целиком в память), загрузка — через `COPY`. Импорт **идемпотентен**:
+   выполняется в одной транзакции, которая сначала полностью очищает обе
+   таблицы, затем загружает данные заново — повторный запуск не создаёт
+   дубликатов и полностью заменяет справочник свежим снимком; при сбое
+   транзакция откатывается, и старые данные остаются нетронутыми.
+5. Установите `CITY_REPOSITORY_SOURCE=postgres` в `.env`, чтобы сервис
+   начал использовать заполненный справочник.
+
+Обоснование индексов для префиксного поиска (btree + `text_pattern_ops`
+вместо `pg_trgm`) — в комментарии к `migrations/001_cities.sql`. Решение
+хранить справочник в собственном PostgreSQL, а не обращаться к внешнему
+геокодеру на каждый запрос автодополнения — в
+[`docs/adr/0001-own-postgres-city-directory.md`](docs/adr/0001-own-postgres-city-directory.md).
 
 ## Переменные окружения
 
@@ -101,7 +153,8 @@ pytest tests/ -v
 | `ENVIRONMENT`              | нет (default: production) | `development` отключает обязательность `SERVICE_SECRET` при старте.                                        |
 | `SERVICE_SECRET`           | да в production           | Секрет для аутентификации запросов, сверяется с заголовком `X-Service-Secret`.                              |
 | `CITY_REPOSITORY_SOURCE`   | нет                        | Источник справочника городов для `/geocode/search`: `postgres` или пусто (справочник недоступен, `503`).    |
-| `CITY_REPOSITORY_DSN`      | да, если `CITY_REPOSITORY_SOURCE=postgres` | Строка подключения к PostgreSQL.                                                                              |
+| `CITY_REPOSITORY_DSN`      | да, если `CITY_REPOSITORY_SOURCE=postgres` | Строка подключения к PostgreSQL — используется и сервисом, и `scripts/import_geonames.py`.                    |
+| `TEST_POSTGRES_DSN`        | нет, только для тестов     | Отдельная строка подключения к ОДНОРАЗОВОЙ/тестовой БД для `tests/test_postgres_city_repository.py` — тесты делают `TRUNCATE`, поэтому НЕ используйте здесь `CITY_REPOSITORY_DSN` от реальной базы. |
 | `PORT`                     | нет (default: 8000)       | Порт, на котором слушает `uvicorn`. Задаётся платформой деплоя (Timeweb Cloud App Platform подставляет её автоматически). |
 
 Полный список — в `.env.example`.
@@ -150,3 +203,9 @@ Dieter Koch и Alois Treindl, [Astrodienst AG](https://www.astro.com/)) чере
 бинарных файлов эфемерид вместе с сервисом, при этом даёт точность порядка
 угловой секунды — этого достаточно для астрологических расчётов в рамках
 проекта «Кокон».
+
+Справочник городов для автодополнения использует данные
+[GeoNames](https://www.geonames.org/), распространяемые под лицензией
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Атрибуция:
+данные © [GeoNames](https://www.geonames.org/), лицензия CC BY 4.0
+(https://creativecommons.org/licenses/by/4.0/).
