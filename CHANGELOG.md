@@ -7,6 +7,17 @@
 
 ### Added
 
+- `certs/timeweb-root.crt` — публичный корневой сертификат УЦ Timeweb
+  Cloud (скачан с https://st.timeweb.com/cloud-static/ca.crt, не секрет,
+  коммитится в репозиторий). `Dockerfile` копирует его в финальном stage,
+  после создания пользователя `appuser`, в
+  `/home/appuser/.postgresql/root.crt` (путь и права `chmod 400`, которые
+  ищет `libpq` для `sslmode=verify-full` при подключении к managed
+  PostgreSQL Timeweb) — без него сервис падал при старте подключения к БД
+  с ошибкой `root certificate file ... does not exist`. Не требуется и не
+  используется, если `CITY_REPOSITORY_SOURCE` не `postgres` — расчёт
+  натальной карты по-прежнему не зависит от БД. См. README, раздел
+  «Сертификат Timeweb Cloud PostgreSQL».
 - Справочник городов GeoNames: `migrations/001_cities.sql` (таблицы
   `cities`, `city_alternate_names`, префиксные индексы `text_pattern_ops`
   + индекс по `feature_code` — обоснование выбора индексов в комментарии

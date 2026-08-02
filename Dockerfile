@@ -25,6 +25,16 @@ COPY . .
 
 RUN chown -R appuser:appuser /app
 
+# Timeweb Cloud managed PostgreSQL требует sslmode=verify-full, для чего
+# libpq ищет корневой сертификат УЦ по умолчанию в ~/.postgresql/root.crt
+# текущего пользователя (appuser). Сертификат публичный (не секрет,
+# коммитится в репозиторий — см. certs/timeweb-root.crt и README).
+# Копируется только сюда, отдельно от общего COPY . ., с правами на чтение
+# только для appuser — после создания пользователя, как и требуется.
+RUN mkdir -p /home/appuser/.postgresql && chown appuser:appuser /home/appuser/.postgresql
+COPY --chown=appuser:appuser certs/timeweb-root.crt /home/appuser/.postgresql/root.crt
+RUN chmod 400 /home/appuser/.postgresql/root.crt
+
 USER appuser
 
 ENV PATH=/home/appuser/.local/bin:$PATH \
