@@ -1,0 +1,439 @@
+{
+  "planets": [
+    {
+      "name": "Sun",
+      "sign": "Gemini",
+      "degree": 24.0699,
+      "house": 9,
+      "retrograde": false
+    },
+    {
+      "name": "Moon",
+      "sign": "Pisces",
+      "degree": 14.5235,
+      "house": 6,
+      "retrograde": false
+    },
+    {
+      "name": "Mercury",
+      "sign": "Gemini",
+      "degree": 5.5835,
+      "house": 9,
+      "retrograde": false
+    },
+    {
+      "name": "Venus",
+      "sign": "Taurus",
+      "degree": 18.7041,
+      "house": 8,
+      "retrograde": false
+    },
+    {
+      "name": "Mars",
+      "sign": "Aries",
+      "degree": 10.9964,
+      "house": 7,
+      "retrograde": false
+    },
+    {
+      "name": "Jupiter",
+      "sign": "Cancer",
+      "degree": 15.8759,
+      "house": 10,
+      "retrograde": false
+    },
+    {
+      "name": "Saturn",
+      "sign": "Capricorn",
+      "degree": 24.0356,
+      "house": 4,
+      "retrograde": true
+    },
+    {
+      "name": "Uranus",
+      "sign": "Capricorn",
+      "degree": 8.1677,
+      "house": 4,
+      "retrograde": true
+    },
+    {
+      "name": "Neptune",
+      "sign": "Capricorn",
+      "degree": 13.7187,
+      "house": 4,
+      "retrograde": true
+    },
+    {
+      "name": "Pluto",
+      "sign": "Scorpio",
+      "degree": 15.4028,
+      "house": 2,
+      "retrograde": true
+    },
+    {
+      "name": "Chiron",
+      "sign": "Cancer",
+      "degree": 16.0542,
+      "house": 10,
+      "retrograde": false
+    },
+    {
+      "name": "Mean_Lilith",
+      "sign": "Scorpio",
+      "degree": 24.9443,
+      "house": 2,
+      "retrograde": false
+    },
+    {
+      "name": "Selena",
+      "sign": "Scorpio",
+      "degree": 20.6405,
+      "house": 2,
+      "retrograde": false
+    }
+  ],
+  "houses": [
+    {
+      "number": 1,
+      "sign": "Libra",
+      "degree": 5.7032
+    },
+    {
+      "number": 2,
+      "sign": "Libra",
+      "degree": 29.3178
+    },
+    {
+      "number": 3,
+      "sign": "Scorpio",
+      "degree": 29.8937
+    },
+    {
+      "number": 4,
+      "sign": "Capricorn",
+      "degree": 7.8694
+    },
+    {
+      "number": 5,
+      "sign": "Aquarius",
+      "degree": 14.6621
+    },
+    {
+      "number": 6,
+      "sign": "Pisces",
+      "degree": 13.6383
+    },
+    {
+      "number": 7,
+      "sign": "Aries",
+      "degree": 5.7032
+    },
+    {
+      "number": 8,
+      "sign": "Aries",
+      "degree": 29.3178
+    },
+    {
+      "number": 9,
+      "sign": "Taurus",
+      "degree": 29.8937
+    },
+    {
+      "number": 10,
+      "sign": "Cancer",
+      "degree": 7.8694
+    },
+    {
+      "number": 11,
+      "sign": "Leo",
+      "degree": 14.6621
+    },
+    {
+      "number": 12,
+      "sign": "Virgo",
+      "degree": 13.6383
+    }
+  ],
+  "aspects": [
+    {
+      "planet1": "Moon",
+      "planet2": "Venus",
+      "aspect": "sextile",
+      "orb": 4.18,
+      "applying": true
+    },
+    {
+      "planet1": "Moon",
+      "planet2": "Jupiter",
+      "aspect": "trine",
+      "orb": 1.35,
+      "applying": true
+    },
+    {
+      "planet1": "Moon",
+      "planet2": "Neptune",
+      "aspect": "sextile",
+      "orb": 0.8,
+      "applying": false
+    },
+    {
+      "planet1": "Moon",
+      "planet2": "Pluto",
+      "aspect": "trine",
+      "orb": 0.88,
+      "applying": true
+    },
+    {
+      "planet1": "Moon",
+      "planet2": "Chiron",
+      "aspect": "trine",
+      "orb": 1.53,
+      "applying": true
+    },
+    {
+      "planet1": "Mercury",
+      "planet2": "True_North_Lunar_Node",
+      "aspect": "trine",
+      "orb": 2.54,
+      "applying": true
+    },
+    {
+      "planet1": "Mercury",
+      "planet2": "Ascendant",
+      "aspect": "trine",
+      "orb": 0.12,
+      "applying": false
+    },
+    {
+      "planet1": "Mercury",
+      "planet2": "Descendant",
+      "aspect": "sextile",
+      "orb": 0.12,
+      "applying": false
+    },
+    {
+      "planet1": "Mercury",
+      "planet2": "True_South_Lunar_Node",
+      "aspect": "sextile",
+      "orb": 2.54,
+      "applying": true
+    },
+    {
+      "planet1": "Venus",
+      "planet2": "Jupiter",
+      "aspect": "sextile",
+      "orb": 2.83,
+      "applying": false
+    },
+    {
+      "planet1": "Venus",
+      "planet2": "Neptune",
+      "aspect": "trine",
+      "orb": 4.99,
+      "applying": false
+    },
+    {
+      "planet1": "Venus",
+      "planet2": "Pluto",
+      "aspect": "opposition",
+      "orb": 3.3,
+      "applying": false
+    },
+    {
+      "planet1": "Venus",
+      "planet2": "Chiron",
+      "aspect": "sextile",
+      "orb": 2.65,
+      "applying": false
+    },
+    {
+      "planet1": "Mars",
+      "planet2": "Jupiter",
+      "aspect": "square",
+      "orb": 4.88,
+      "applying": true
+    },
+    {
+      "planet1": "Mars",
+      "planet2": "Uranus",
+      "aspect": "square",
+      "orb": 2.83,
+      "applying": false
+    },
+    {
+      "planet1": "Mars",
+      "planet2": "Neptune",
+      "aspect": "square",
+      "orb": 2.72,
+      "applying": true
+    },
+    {
+      "planet1": "Mars",
+      "planet2": "True_North_Lunar_Node",
+      "aspect": "sextile",
+      "orb": 2.88,
+      "applying": false
+    },
+    {
+      "planet1": "Mars",
+      "planet2": "Medium_Coeli",
+      "aspect": "square",
+      "orb": 3.13,
+      "applying": true
+    },
+    {
+      "planet1": "Mars",
+      "planet2": "Imum_Coeli",
+      "aspect": "square",
+      "orb": 3.13,
+      "applying": true
+    },
+    {
+      "planet1": "Mars",
+      "planet2": "True_South_Lunar_Node",
+      "aspect": "trine",
+      "orb": 2.88,
+      "applying": false
+    },
+    {
+      "planet1": "Jupiter",
+      "planet2": "Neptune",
+      "aspect": "opposition",
+      "orb": 2.16,
+      "applying": false
+    },
+    {
+      "planet1": "Jupiter",
+      "planet2": "Pluto",
+      "aspect": "trine",
+      "orb": 0.47,
+      "applying": false
+    },
+    {
+      "planet1": "Jupiter",
+      "planet2": "Chiron",
+      "aspect": "conjunction",
+      "orb": 0.18,
+      "applying": true
+    },
+    {
+      "planet1": "Saturn",
+      "planet2": "Descendant",
+      "aspect": "quintile",
+      "orb": 0.33,
+      "applying": true
+    },
+    {
+      "planet1": "Saturn",
+      "planet2": "Mean_Lilith",
+      "aspect": "sextile",
+      "orb": 0.91,
+      "applying": false
+    },
+    {
+      "planet1": "Uranus",
+      "planet2": "Ascendant",
+      "aspect": "square",
+      "orb": 2.46,
+      "applying": true
+    },
+    {
+      "planet1": "Uranus",
+      "planet2": "Medium_Coeli",
+      "aspect": "opposition",
+      "orb": 0.3,
+      "applying": true
+    },
+    {
+      "planet1": "Uranus",
+      "planet2": "Descendant",
+      "aspect": "square",
+      "orb": 2.46,
+      "applying": true
+    },
+    {
+      "planet1": "Uranus",
+      "planet2": "Imum_Coeli",
+      "aspect": "conjunction",
+      "orb": 0.3,
+      "applying": true
+    },
+    {
+      "planet1": "Neptune",
+      "planet2": "Pluto",
+      "aspect": "sextile",
+      "orb": 1.68,
+      "applying": false
+    },
+    {
+      "planet1": "Neptune",
+      "planet2": "Chiron",
+      "aspect": "opposition",
+      "orb": 2.34,
+      "applying": false
+    },
+    {
+      "planet1": "Pluto",
+      "planet2": "Chiron",
+      "aspect": "trine",
+      "orb": 0.65,
+      "applying": false
+    },
+    {
+      "planet1": "True_North_Lunar_Node",
+      "planet2": "Ascendant",
+      "aspect": "trine",
+      "orb": 2.42,
+      "applying": true
+    },
+    {
+      "planet1": "True_North_Lunar_Node",
+      "planet2": "Descendant",
+      "aspect": "sextile",
+      "orb": 2.42,
+      "applying": true
+    },
+    {
+      "planet1": "Ascendant",
+      "planet2": "Medium_Coeli",
+      "aspect": "square",
+      "orb": 2.17,
+      "applying": false
+    },
+    {
+      "planet1": "Ascendant",
+      "planet2": "Imum_Coeli",
+      "aspect": "square",
+      "orb": 2.17,
+      "applying": false
+    },
+    {
+      "planet1": "Ascendant",
+      "planet2": "True_South_Lunar_Node",
+      "aspect": "sextile",
+      "orb": 2.42,
+      "applying": true
+    },
+    {
+      "planet1": "Medium_Coeli",
+      "planet2": "Descendant",
+      "aspect": "square",
+      "orb": 2.17,
+      "applying": false
+    },
+    {
+      "planet1": "Descendant",
+      "planet2": "Imum_Coeli",
+      "aspect": "square",
+      "orb": 2.17,
+      "applying": false
+    },
+    {
+      "planet1": "Descendant",
+      "planet2": "True_South_Lunar_Node",
+      "aspect": "trine",
+      "orb": 2.42,
+      "applying": true
+    }
+  ]
+}
